@@ -8,22 +8,32 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import DBSCAN
 from collections import Counter
+import torch
+import torch.optim as optim
 
 # 设置区域 ---------- begin ----------
 corner_example_name = "round_corner_example" # csv文件名称，需要放在./data文件夹下
-pic_store_name = "pic" # 存储输出图片文件夹，需要放在项目根目录下
+pic_store_name = "pic" # 存储输出图片文件夹，需要放在项目根目录./下
+result_store_name = "results" # 存储输出结果文件夹，需要放在根目录./下
 expected_interval_count = 50 # 对 y 汇聚因数（邻近多少个y计算一次R）
 downsampling_factor = 15 # 下采样因数
 line_fitting_window_size = 15 # 滑动窗口点数
 random_seed = 42 # 随机种子
 dbscan_eps = 0.1 # dbscan 邻域的半径大小
 dbscan_min_sample = 8 # dbscan 簇最小成员数
+learning_rate = 1 # 梯度下降的学习率
+num_iterations = 200 # 梯度下降执行次数
+num_in_the_cirle = 10 # 圆内点数
 # 设置区域 ---------- end ----------
 
 store_pic_folder_name = "./" + pic_store_name
+store_result_folder_name = "./" + result_store_name
 
 if not os.path.exists(store_pic_folder_name):
     os.makedirs(store_pic_folder_name)
+
+if not os.path.exists(store_result_folder_name):
+    os.makedirs(store_result_folder_name)
     
 def intersection_point(m1, b1, m2, b2):
     coefficients_matrix = np.array([[m1, -1], [m2, -1]])
@@ -31,12 +41,16 @@ def intersection_point(m1, b1, m2, b2):
     solution = np.linalg.solve(coefficients_matrix, constants_matrix)
     return solution[0], solution[1]
 
-def calculate_angle_bisector_slope(a, b):
-    
-    # bisector_slope = (a * b + np.sqrt(a * a * b * b + a * a + b * b + 1) - 1) / (a + b)
-    bisector_slope = (a * b - np.sqrt(a * a * b * b + a * a + b * b + 1) - 1) / (a + b)
-
+def calculate_angle_bisector_slope(m1, m2):
+    # bisector_slope = (m1 * m2 + np.sqrt(m1 * m1 * m2 * m2 + m1 * m1 + m2 * m2 + 1) - 1) / (m1 + m2)
+    bisector_slope = (m1 * m2 - np.sqrt(m1 * m1 * m2 * m2 + m1 * m1 + m2 * m2 + 1) - 1) / (m1 + m2)
     return bisector_slope
+
+def calculate_direction_vector_from_slope(slope):
+    delta_x = 1
+    delta_y = slope
+    len = np.sqrt(delta_x * delta_x + delta_y * delta_y)
+    return delta_x / len, delta_y / len
 
 def calculate_normal_vector(id, data):
     id_return = (2 * id + line_fitting_window_size + 1) // 2
@@ -46,7 +60,17 @@ def calculate_normal_vector(id, data):
     return_y = 1
     len = np.sqrt(return_x * return_x +  return_y * return_y)
     return np.array([id_return, return_x / len, return_y / len], dtype=float)
-    
+
+def calculate_point_to_line_perpendicular(x0, y0, k, b):
+    x = (x0 + k * y0 - k * b) / (k * k + 1)
+    y = (k * k * y0 + k * x0 + b) / (k * k + 1)
+    return x, y
+
+def calculate_distance(x1, y1, x2, y2, device = "numpy"):
+    if device == "numpy":
+        return np.sqrt((x1 - x2) ** 2 +  (y1 - y2) ** 2)
+    elif device == "torch":
+        return torch.sqrt((x1 - x2) ** 2 +  (y1 - y2) ** 2) 
 
 def solve(interval_id, solve_data):
     store_this_interval_path = os.path.join(store_pic_folder_name, 'batch_' + str(interval_id))
@@ -117,10 +141,11 @@ def solve(interval_id, solve_data):
     filtered_labels = [label for label in labels if label != -1]
     label_counts = Counter(filtered_labels)
     most_common_labels = label_counts.most_common(2)
-    assert len(most_common_labels) == 2
-    # 请调整超参数，如调高 expected_interval_count
+    assert len(most_common_labels) == 2, "Please adjust hyperparameters to prevent the clustering result from being too bad."
+    # 无法分出两个请调整超参数，如调高 expected_interval_count
     
     plt.scatter(downsampled_data[:, 0], downsampled_data[:, 1], color='blue', marker='o', label='Noise', s=10)
+    plt.axis('equal')
     plt.title('Scatter Plot')
     plt.xlabel('X-axis')
     plt.ylabel('Y-axis')
@@ -161,10 +186,77 @@ def solve(interval_id, solve_data):
     y1 = angle_bisector_slope * x1 + angle_bisector_intercept
     y2 = angle_bisector_slope * x2 + angle_bisector_intercept
     plt.plot([x1, x2], [y1, y2], label="AngleBisector", linestyle = '--', color='black')
+    
+    dv_x, dv_y = calculate_direction_vector_from_slope(angle_bisector_slope)    
+    
+    sgd_dis = torch.tensor([1.0], requires_grad=True)
+    optimizer = optim.Adam([sgd_dis], lr=learning_rate)
+    num_iter = num_iterations
+    losses = []
+    best_sed_dis = None
+    best_loss = None
+    for _ in range(num_iter):
+        optimizer.zero_grad()
+        circle_center_x = cross_point[0] + sgd_dis * dv_x
+        circle_center_y = cross_point[1] + sgd_dis * dv_y
+        xp1, yp1 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[0], bs[0])
+        xp2, yp2 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[1], bs[1])
+        dis = calculate_distance(circle_center_x, circle_center_y, xp1, yp1, "torch")
+        loss = torch.tensor(0.0, requires_grad=True)
+        cnt = cnt + 1
+        for data in downsampled_data:
+            if data[0] >= min(xp1, xp2) and data[0] <= max(xp1, xp2):
+                loss1 = calculate_distance(data[0], data[1], circle_center_x, circle_center_y, "torch") - dis
+                loss = loss + loss1 * loss1
+                cnt = cnt + 1
+        if cnt < num_in_the_cirle:
+            loss = torch.tensor(1e9, requires_grad=True)
+        else:
+            loss  = loss / cnt
+        detached_loss = float(loss.detach())
+        losses.append(detached_loss)
+        if best_loss is None or detached_loss < best_loss:
+            best_loss = detached_loss
+            best_sed_dis = float(sgd_dis.detach())
+        loss.backward()
+        optimizer.step()
+        # print("loss: ", float(loss.detach()), "sgd_dis: ", float(sgd_dis.detach().float()))
+    
+    sgd_dis = torch.tensor([best_sed_dis], requires_grad=True)
+    
+    circle_center_x = cross_point[0] + sgd_dis * dv_x
+    circle_center_y = cross_point[1] + sgd_dis * dv_y
+    xp1, yp1 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[0], bs[0])
+    distance = calculate_distance(circle_center_x, circle_center_y, xp1, yp1, "torch")
+    distance = float(dis.detach())
+    circle_center_x = cross_point[0] + distance * dv_x
+    circle_center_y = cross_point[1] + distance * dv_y
+    plt.scatter(circle_center_x, circle_center_y, color='black', marker='o', label='CircleCenter', s=20)
+    xp1, yp1 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[0], bs[0])
+    xp2, yp2 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[1], bs[1])
+    plt.scatter(xp1, yp1, color='black', marker='o', label='PerpendicularPoint1', s=20)
+    plt.scatter(xp2, yp2, color='black', marker='o', label='PerpendicularPoint2', s=20)
+    dis = calculate_distance(circle_center_x, circle_center_y, xp1, yp1)
+    circle = plt.Circle((circle_center_x, circle_center_y), dis , color='black', fill=False)
+    plt.gcf().gca().add_artist(circle)
+    
+    loss = 0
+    cnt = cnt + 1
+    
+    for data in downsampled_data:
+        if data[0] >= min(xp1, xp2) and data[0] <= max(xp1, xp2):
+            plt.scatter(data[0], data[1], color='lightgreen', marker='o', s=10)
+            loss1 = abs(calculate_distance(data[0], data[1], circle_center_x, circle_center_y) - dis)
+            loss += loss1 * loss1
+            cnt = cnt + 1
+    loss /= cnt
+    # print("when distance = ", distance, " loss = ", loss)
+    plt.title(f"r = {float(distance)} loss = {float(loss)}")
     plt.legend()
     plt.savefig(os.path.join(store_this_interval_path, 'new_scatter_plot.png'))
     plt.clf()
-    return 0
+    
+    return distance
 
 example_csv_path = os.path.join("./data", corner_example_name + ".csv")
 example_npy_path = os.path.join("./data", corner_example_name + ".npy")
@@ -185,8 +277,7 @@ except:
 unique_values, counts = np.unique(data_array[:, 1], return_counts=True)
 interval_id = 0
 estimated_R = []
-
-# max_test_count = 100
+# max_test_count = 10
 for i in tqdm(range(0, len(unique_values), expected_interval_count), desc="Processing"):
     interval_id += 1
     # print("------------[the " + str(interval_id) + "th interval]------------")
@@ -195,3 +286,19 @@ for i in tqdm(range(0, len(unique_values), expected_interval_count), desc="Proce
     estimated_R.append(solve(interval_id, solve_data))
     # if interval_id >= max_test_count:
         # break
+
+csv_file_path = os.path.join(store_result_folder_name, "results.csv")
+with open(csv_file_path, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['Block', 'Values'])  # 写入列名
+    for epoch, value in enumerate(estimated_R, start=1):
+        csv_writer.writerow([epoch, value])
+print(f"results has been saved in the CSV file '{csv_file_path}' successfully!")
+
+plt.hist(estimated_R, bins=20, density=True, alpha=0.7, color='blue')
+plt.title('Histogram of Partial Normal Distribution')
+plt.xlabel('Values')
+plt.ylabel('Frequency')
+plt.savefig(os.path.join(store_result_folder_name, "results_box.png"))
+plt.show()
+plt.clf()
