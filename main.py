@@ -12,12 +12,12 @@ from collections import Counter
 # 设置区域 ---------- begin ----------
 corner_example_name = "round_corner_example" # csv文件名称，需要放在./data文件夹下
 pic_store_name = "pic" # 存储输出图片文件夹，需要放在项目根目录下
-expected_interval_count = 10 # 对 y 汇聚因数（邻近多少个y计算一次R）
+expected_interval_count = 50 # 对 y 汇聚因数（邻近多少个y计算一次R）
 downsampling_factor = 15 # 下采样因数
 line_fitting_window_size = 15 # 滑动窗口点数
 random_seed = 42 # 随机种子
-dbscan_eps = 0.1
-dbscan_min_sample = 10
+dbscan_eps = 0.1 # dbscan 邻域的半径大小
+dbscan_min_sample = 8 # dbscan 簇最小成员数
 # 设置区域 ---------- end ----------
 
 store_pic_folder_name = "./" + pic_store_name
@@ -118,6 +118,7 @@ def solve(interval_id, solve_data):
     label_counts = Counter(filtered_labels)
     most_common_labels = label_counts.most_common(2)
     assert len(most_common_labels) == 2
+    # 请调整超参数，如调高 expected_interval_count
     
     plt.scatter(downsampled_data[:, 0], downsampled_data[:, 1], color='blue', marker='o', label='Noise', s=10)
     plt.title('Scatter Plot')
@@ -184,12 +185,13 @@ except:
 unique_values, counts = np.unique(data_array[:, 1], return_counts=True)
 interval_id = 0
 estimated_R = []
-max_test_count = 100
+
+# max_test_count = 100
 for i in tqdm(range(0, len(unique_values), expected_interval_count), desc="Processing"):
     interval_id += 1
     # print("------------[the " + str(interval_id) + "th interval]------------")
     idx = np.where(np.isin(data_array[:, 1], unique_values[i:i + expected_interval_count]))
     solve_data = data_array[idx][:, [0, 1, 2]]
     estimated_R.append(solve(interval_id, solve_data))
-    if interval_id >= max_test_count:
-        break
+    # if interval_id >= max_test_count:
+        # break
