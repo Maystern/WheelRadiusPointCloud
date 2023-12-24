@@ -11,30 +11,64 @@ from collections import Counter
 import torch
 import torch.optim as optim
 
+
 # 设置区域 ---------- begin ----------
-corner_example_name = "round_corner_example" # csv文件名称，需要放在./data文件夹下
+
+"""
+corner_example_name = "clear_cloud_for_test" # csv文件名称, 需要放在./data文件夹下
 pic_store_name = "pic" # 存储输出图片文件夹，需要放在项目根目录./下
 result_store_name = "results" # 存储输出结果文件夹，需要放在根目录./下
-expected_interval_count = 50 # 对 y 汇聚因数（邻近多少个y计算一次R）
-downsampling_factor = 15 # 下采样因数
-line_fitting_window_size = 15 # 滑动窗口点数
+expected_interval_count = 50 # 对 y 汇聚因数, 邻近多少个y计算一次R
+downsampling_factor = 5 # 下采样因数
+line_fitting_window_size = 5 # 滑动窗口点数
 random_seed = 42 # 随机种子
-dbscan_eps = 0.1 # dbscan 邻域的半径大小
-dbscan_min_sample = 8 # dbscan 簇最小成员数
-learning_rate = 1 # 梯度下降的学习率
+dbscan_eps = 0.05 # dbscan 邻域的半径大小
+dbscan_min_sample = 5 # dbscan 簇最小成员数
+learning_rate = 1e-2 # 梯度下降的学习率
 num_iterations = 200 # 梯度下降执行次数
-num_in_the_cirle = 10 # 圆内点数
-prior_circle_dis = 1.0 # 先验的圆半径
+prior_circle_dis = 1 # 先验的圆半径
+"""
+
+
+corner_example_name = "200r2"
+pic_store_name = "pic"
+result_store_name = "results"
+expected_interval_count = 50
+downsampling_factor = 5
+line_fitting_window_size = 5
+random_seed = 42
+dbscan_eps = 0.01
+dbscan_min_sample = 5
+learning_rate = 0.01
+num_iterations = 200
+prior_circle_dis = 1
+
+
+
 # 设置区域 ---------- end ----------
 
-store_pic_folder_name = "./" + pic_store_name
-store_result_folder_name = "./" + result_store_name
+store_pic_folder_name = os.path.join( "./" + pic_store_name, corner_example_name)
+store_result_folder_name = os.path.join("./" + result_store_name, corner_example_name)
 
 if not os.path.exists(store_pic_folder_name):
     os.makedirs(store_pic_folder_name)
 
 if not os.path.exists(store_result_folder_name):
     os.makedirs(store_result_folder_name)
+    
+with open(os.path.join(store_result_folder_name, "settings.txt"), 'w') as file:
+    file.write(f"corner_example_name = \"{corner_example_name}\"\n")
+    file.write(f"pic_store_name = \"{pic_store_name}\"\n")
+    file.write(f"result_store_name = \"{result_store_name}\"\n")
+    file.write(f"expected_interval_count = {expected_interval_count}\n")
+    file.write(f"downsampling_factor = {downsampling_factor}\n")
+    file.write(f"line_fitting_window_size = {line_fitting_window_size}\n")
+    file.write(f"random_seed = {random_seed}\n")
+    file.write(f"dbscan_eps = {dbscan_eps}\n")
+    file.write(f"dbscan_min_sample = {dbscan_min_sample}\n")
+    file.write(f"learning_rate = {learning_rate}\n")
+    file.write(f"num_iterations = {num_iterations}\n")
+    file.write(f"prior_circle_dis = {prior_circle_dis}\n")
     
 def intersection_point(m1, b1, m2, b2):
     coefficients_matrix = np.array([[m1, -1], [m2, -1]])
@@ -155,6 +189,7 @@ def solve(interval_id, solve_data):
     line_colors = ['brown', 'magenta']
     ms = []
     bs = []
+    
     for i, most_common_label in enumerate(most_common_labels):
         cluster_points_id = nor_vecs[labels == most_common_label[0]][:, 0].tolist()
         cluster_points_idx = [int(x) for x in cluster_points_id]
@@ -164,20 +199,24 @@ def solve(interval_id, solve_data):
         slope, intercept = coefficients
         ms.append(slope)
         bs.append(intercept)
-        if  min(cluster_points[:, 0]) <= 8.5: 
-            x1 = 7
-            x2 = 9
-        else:
-            x1 = 8
-            x2 = 13
-        y1 = slope * x1 + intercept
-        y2 = slope * x2 + intercept
-        plt.plot([x1, x2], [y1, y2], label="LineFit#" + str(i), linestyle = '--', color=line_colors[i])
     
     cross_point = intersection_point(ms[0], bs[0], ms[1], bs[1])
     formatted_point = f'({cross_point[0]:.2f}, {cross_point[1]:.2f})'
     plt.scatter(cross_point[0], cross_point[1], color='black', marker='o', label='CrossPoint', s=20)
     plt.text(cross_point[0], cross_point[1], formatted_point, ha='right', va='bottom')
+    
+    for i, most_common_label in enumerate(most_common_labels):
+        cluster_points_id = nor_vecs[labels == most_common_label[0]][:, 0].tolist()
+        cluster_points_idx = [int(x) for x in cluster_points_id]
+        cluster_points = downsampled_data[cluster_points_idx]
+        x1 = cross_point[0]
+        x2 = min(cluster_points[:, 0])
+        x3 = max(cluster_points[:, 0])
+        if abs(x2 - x1) < abs(x3 - x1):
+            x2 = x3
+        y1 = ms[i] * x1 + bs[i]
+        y2 = ms[i] * x2 + bs[i]
+        plt.plot([x1, x2], [y1, y2], label="LineFit#" + str(i), linestyle = '--', color=line_colors[i])
     
     angle_bisector_slope = calculate_angle_bisector_slope(ms[0], ms[1])
     angle_bisector_intercept = cross_point[1] - angle_bisector_slope * cross_point[0]
@@ -186,7 +225,7 @@ def solve(interval_id, solve_data):
     x2 = 9
     y1 = angle_bisector_slope * x1 + angle_bisector_intercept
     y2 = angle_bisector_slope * x2 + angle_bisector_intercept
-    plt.plot([x1, x2], [y1, y2], label="AngleBisector", linestyle = '--', color='black')
+    # plt.plot([x1, x2], [y1, y2], label="AngleBisector", linestyle = '--', color='black')
     
     dv_x, dv_y = calculate_direction_vector_from_slope(angle_bisector_slope)    
 
@@ -206,15 +245,14 @@ def solve(interval_id, solve_data):
         dis = calculate_distance(circle_center_x, circle_center_y, xp1, yp1, "torch")
         loss = torch.tensor(0.0, requires_grad=True)
         cnt = 0
+        # tmp = []
         for data in result:
             if data[0] >= min(xp1, xp2) and data[0] <= max(xp1, xp2):
                 loss1 = calculate_distance(data[0], data[1], circle_center_x, circle_center_y, "torch") - dis
                 loss = loss + loss1 * loss1
+                # tmp.append(float(loss1))
                 cnt = cnt + 1
-        if cnt < num_in_the_cirle:
-            loss = torch.tensor(1e9, requires_grad=True)
-        else:
-            loss  = loss / cnt
+        loss = loss / cnt
         detached_loss = float(loss.detach())
         losses.append(detached_loss)
         if best_loss is None or detached_loss < best_loss:
@@ -222,39 +260,33 @@ def solve(interval_id, solve_data):
             best_sed_dis = float(sgd_dis.detach())
         loss.backward()
         optimizer.step()
-        # print("loss: ", float(loss.detach()), "sgd_dis: ", float(sgd_dis.detach().float()))
+        # print("loss: ", float(loss.detach()), "sgd_dis: ", float(sgd_dis.detach().float()), "cnt: ", cnt)
+        # print(tmp, "\n")
     
-    sgd_dis = torch.tensor([best_sed_dis], requires_grad=True)
+    # sgd_dis = torch.tensor([best_sed_dis], requires_grad=True)
     
-    circle_center_x = cross_point[0] + sgd_dis * dv_x
-    circle_center_y = cross_point[1] + sgd_dis * dv_y
-    xp1, yp1 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[0], bs[0])
-    distance = calculate_distance(circle_center_x, circle_center_y, xp1, yp1, "torch")
-    distance = float(dis.detach())
-    circle_center_x = cross_point[0] + distance * dv_x
-    circle_center_y = cross_point[1] + distance * dv_y
-    plt.scatter(circle_center_x, circle_center_y, color='black', marker='o', label='CircleCenter', s=20)
+    circle_center_x = cross_point[0] + best_sed_dis * dv_x
+    circle_center_y = cross_point[1] + best_sed_dis * dv_y
     xp1, yp1 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[0], bs[0])
     xp2, yp2 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[1], bs[1])
+    distance = calculate_distance(circle_center_x, circle_center_y, xp1, yp1, "numpy")
+    plt.scatter(circle_center_x, circle_center_y, color='black', marker='o', label='CircleCenter', s=20)
     plt.scatter(xp1, yp1, color='black', marker='o', label='PerpendicularPoint1', s=20)
     plt.scatter(xp2, yp2, color='black', marker='o', label='PerpendicularPoint2', s=20)
-    dis = calculate_distance(circle_center_x, circle_center_y, xp1, yp1)
-    circle = plt.Circle((circle_center_x, circle_center_y), dis , color='black', fill=False)
+    circle = plt.Circle((circle_center_x, circle_center_y), distance , color='black', fill=False)
     plt.gcf().gca().add_artist(circle)
-    
-    loss = 0
-    cnt = 0
-    
-    for data in downsampled_data:
+    plt_lightgreen_x = []
+    plt_lightgreen_y = []
+    for data in result:
         if data[0] >= min(xp1, xp2) and data[0] <= max(xp1, xp2):
-            plt.scatter(data[0], data[1], color='lightgreen', marker='o', s=10)
-            loss1 = abs(calculate_distance(data[0], data[1], circle_center_x, circle_center_y) - dis)
-            loss += loss1 * loss1
-            cnt = cnt + 1
-    loss /= cnt
-    # print("when distance = ", distance, " loss = ", loss)
-    plt.title(f"r = {float(distance)} loss = {float(loss)}")
-    plt.legend()
+            plt_lightgreen_x.append(data[0])
+            plt_lightgreen_y.append(data[1])
+    plt.scatter(plt_lightgreen_x, plt_lightgreen_y,  color='lightgreen', marker='o', s=10, label = "TrainPoints")
+            
+    plt.title(f"r = {float(distance)} loss = {float(best_loss):5e}")
+    plt.scatter(xp1, yp1, color='black', marker='o', label='CutPoint1', s=20)
+    plt.scatter(xp2, yp2, color='black', marker='o', label='CutPoint2', s=20)
+    # plt.legend()
     plt.savefig(os.path.join(store_this_interval_path, 'new_scatter_plot.png'))
     plt.clf()
     
@@ -279,15 +311,15 @@ except:
 unique_values, counts = np.unique(data_array[:, 1], return_counts=True)
 interval_id = 0
 estimated_R = []
-max_test_count = 10
+# max_test_count = 1
 for i in tqdm(range(0, len(unique_values), expected_interval_count), desc="Processing"):
     interval_id += 1
     # print("------------[the " + str(interval_id) + "th interval]------------")
     idx = np.where(np.isin(data_array[:, 1], unique_values[i:i + expected_interval_count]))
     solve_data = data_array[idx][:, [0, 1, 2]]
     estimated_R.append(solve(interval_id, solve_data))
-    if interval_id >= max_test_count:
-        break
+    # if interval_id >= max_test_count:
+    #     break
 
 csv_file_path = os.path.join(store_result_folder_name, "results.csv")
 with open(csv_file_path, 'w', newline='') as csvfile:
