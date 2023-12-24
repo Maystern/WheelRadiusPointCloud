@@ -24,6 +24,7 @@ dbscan_min_sample = 8 # dbscan 簇最小成员数
 learning_rate = 1 # 梯度下降的学习率
 num_iterations = 200 # 梯度下降执行次数
 num_in_the_cirle = 10 # 圆内点数
+prior_circle_dis = 1.0 # 先验的圆半径
 # 设置区域 ---------- end ----------
 
 store_pic_folder_name = "./" + pic_store_name
@@ -144,7 +145,7 @@ def solve(interval_id, solve_data):
     assert len(most_common_labels) == 2, "Please adjust hyperparameters to prevent the clustering result from being too bad."
     # 无法分出两个请调整超参数，如调高 expected_interval_count
     
-    plt.scatter(downsampled_data[:, 0], downsampled_data[:, 1], color='blue', marker='o', label='Noise', s=10)
+    plt.scatter(result[:, 0], result[:, 1], color='blue', marker='o', label='Noise', s=10)
     plt.axis('equal')
     plt.title('Scatter Plot')
     plt.xlabel('X-axis')
@@ -188,8 +189,9 @@ def solve(interval_id, solve_data):
     plt.plot([x1, x2], [y1, y2], label="AngleBisector", linestyle = '--', color='black')
     
     dv_x, dv_y = calculate_direction_vector_from_slope(angle_bisector_slope)    
-    
-    sgd_dis = torch.tensor([1.0], requires_grad=True)
+
+    sgd_dis = torch.tensor([prior_circle_dis], requires_grad=True, dtype=float)
+        
     optimizer = optim.Adam([sgd_dis], lr=learning_rate)
     num_iter = num_iterations
     losses = []
@@ -203,8 +205,8 @@ def solve(interval_id, solve_data):
         xp2, yp2 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[1], bs[1])
         dis = calculate_distance(circle_center_x, circle_center_y, xp1, yp1, "torch")
         loss = torch.tensor(0.0, requires_grad=True)
-        cnt = cnt + 1
-        for data in downsampled_data:
+        cnt = 0
+        for data in result:
             if data[0] >= min(xp1, xp2) and data[0] <= max(xp1, xp2):
                 loss1 = calculate_distance(data[0], data[1], circle_center_x, circle_center_y, "torch") - dis
                 loss = loss + loss1 * loss1
@@ -241,7 +243,7 @@ def solve(interval_id, solve_data):
     plt.gcf().gca().add_artist(circle)
     
     loss = 0
-    cnt = cnt + 1
+    cnt = 0
     
     for data in downsampled_data:
         if data[0] >= min(xp1, xp2) and data[0] <= max(xp1, xp2):
@@ -277,15 +279,15 @@ except:
 unique_values, counts = np.unique(data_array[:, 1], return_counts=True)
 interval_id = 0
 estimated_R = []
-# max_test_count = 10
+max_test_count = 10
 for i in tqdm(range(0, len(unique_values), expected_interval_count), desc="Processing"):
     interval_id += 1
     # print("------------[the " + str(interval_id) + "th interval]------------")
     idx = np.where(np.isin(data_array[:, 1], unique_values[i:i + expected_interval_count]))
     solve_data = data_array[idx][:, [0, 1, 2]]
     estimated_R.append(solve(interval_id, solve_data))
-    # if interval_id >= max_test_count:
-        # break
+    if interval_id >= max_test_count:
+        break
 
 csv_file_path = os.path.join(store_result_folder_name, "results.csv")
 with open(csv_file_path, 'w', newline='') as csvfile:
