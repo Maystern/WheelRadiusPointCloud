@@ -15,6 +15,8 @@ The algorithm aggregates the data near the y-axis through mean pooling, transfor
 First, use `conda` to install a virtual environment named `corfit` and configure all the required packages for the code.
 
 ```
+(base) $ git clone https://github.com/Maystern/WheelRadiusPointCloud.git
+(base) $ cd WheelRadiusPointCloud
 (base) $ conda create -n corfit python=3.7.16
 (base) $ conda activate corfit
 (corfit) $ pip install -r requirements.txt
