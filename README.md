@@ -29,7 +29,6 @@ Check if the project is configured in the following format:
 ├── results
 ├── README.md
 ├── main.py
-├── help.ipynb
 └── requirements.txt
 ```
 
