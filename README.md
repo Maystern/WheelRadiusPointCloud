@@ -53,7 +53,7 @@ The format of the `sample.csv` file should be as follows, including headers, the
 ...
 ```
 
-Next, you can use visualization tools like CloudCompare to load and inspect the processed point cloud data.
+You can use visualization tools like `CloudCompare` to load and inspect the processed point cloud data.
 
 <img src="https://raw.githubusercontent.com/Maystern/picbed/main/image-20231226205904746.png" alt="Your Image" width="400"/>
 
