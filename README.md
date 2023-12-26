@@ -107,12 +107,12 @@ optional arguments:
 ```
 
 
-You can view the results of DBSCAN clustering and the fitting calculation for this batch in the `./pic/sample/batch_id` directory, as shown in the following images:
+You can view the results of ***DBSCAN clustering*** and the ***fitting calculation*** for this batch in the `./pic/sample/batch_id` directory, as shown in the following images:
 
 <img src="https://raw.githubusercontent.com/Maystern/picbed/main/DBSCAN_clustering_result.png" alt="DBSCAN_clustering_result" width="400"/> <img src="https://raw.githubusercontent.com/Maystern/picbed/main/new_scatter_plot——1.png" alt="new_scatter_plot——1" width="400"/>
 
 
-Once the progress bar completes, you will find all batch fitting results (radius, angle between fitted lines) and a visualized histogram in the `./results/sample` folder, as illustrated below:
+Once the progress bar completes, you will find all ***batch fitting results*** (radius, angle between fitted lines) and a ***visualized histogram*** in the `./results/sample` folder, as illustrated below:
 ```
 // results.csv
 Block,R,Angle
