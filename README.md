@@ -77,35 +77,38 @@ CSV Point Cloud Data.
 optional arguments:
   -h, --help            show this help message and exit
   -n CORNER_EXAMPLE_NAME
-                        source data CSV file name, which should be placed in
-                        the ./data folder.
-  -pic PIC_STORE_NAME   output image folder name, which should be placed in
-                        the project root directory ./
+                        [default: None | str] source data CSV file name, which
+                        should be placed in the ./data folder.
+  -pic PIC_STORE_NAME   [default: pic | str] output image folder name, which
+                        should be placed in the project root directory ./
   -result RESULT_STORE_NAME
-                        output results folder name, which should be placed in
-                        the root directory ./
+                        [default: results | str] output results folder name,
+                        which should be placed in the root directory ./
   -i EXPECTED_INTERVAL_COUNT
-                        aggregation factor for y, how many neighboring y
-                        values to calculate R at a time.
+                        [default: 10 | int] aggregation factor for y, how many
+                        neighboring y values to calculate R at a time.
   -d DOWNSAMPLING_FACTOR
-                        downsampling factor, determining a point for
-                        estimating the lines on both sides every few data
-                        points.
+                        [default: 5 | int] downsampling factor, determining a
+                        point for estimating the lines on both sides every few
+                        data points.
   -w LINE_FITTING_WINDOW_SIZE
-                        number of points in the sliding window, consecutively
-                        fitting lines with multiple downsampling points to
-                        calculate the normal vector.
+                        [default: 5 | int] number of points in the sliding
+                        window, consecutively fitting lines with multiple
+                        downsampling points to calculate the normal vector.
   -s RANDOM_SEED        random seed
   -dbcan_eps DBSCAN_EPS
-                        radius size of the neighborhood for DBSCAN.
+                        [default: 0.05 | float] radius size of the
+                        neighborhood for DBSCAN.
   -dbcan_min_sample DBSCAN_MIN_SAMPLE
-                        minimum number of members in a cluster for DBSCAN.
-  -l LEARNING_RATE      learning rate for gradient descent using Adam.
-  -e EPSILON            Termination criterion for gradient descent, |loss' -
-                        loss| < epsilon
-  -r PRIOR_CIRCLE_R     Prior circle radius, which is used to set the initial
-                        value for gradient descent in estimating the original
-                        radius of the grinding wheel.
+                        [default: 5 | int] minimum number of members in a
+                        cluster for DBSCAN.
+  -l LEARNING_RATE      [default: 0.01 | float] learning rate for gradient
+                        descent using Adam.
+  -e EPSILON            [default: 1e-08 | float] Termination criterion for
+                        gradient descent, |loss' - loss| < epsilon
+  -r PRIOR_CIRCLE_R     [default: 1.0 | float] Prior circle radius, which is
+                        used to set the initial value for gradient descent in
+                        estimating the original radius of the grinding wheel.
 ```
 
 

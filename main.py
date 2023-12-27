@@ -14,33 +14,33 @@ def parse_args():
     
     parser = argparse.ArgumentParser(description='Estimation of Grinding Wheel Radius Using Gradient Descent Algorithm Based on CSV Point Cloud Data.')
     parser.add_argument('-n', dest='corner_example_name', type=str, default= None, # csv文件名称, 需要放在./data文件夹下
-                        help='source data CSV file name, which should be placed in the ./data folder.') 
+                        help='[default: %(default)s | %(type)s] source data CSV file name, which should be placed in the ./data folder.') 
     parser.add_argument('-pic', dest='pic_store_name', type=str, default='pic', # 存储输出图片文件夹，需要放在项目根目录./下
-                        help='output image folder name, which should be placed in the project root directory ./')
+                        help='[default: %(default)s | %(type)s] output image folder name, which should be placed in the project root directory ./')
     parser.add_argument('-result', dest='result_store_name', type=str, default='results', # 存储输出结果文件夹，需要放在根目录./下
-                        help='output results folder name, which should be placed in the root directory ./')
+                        help='[default: %(default)s | %(type)s] output results folder name, which should be placed in the root directory ./')
     parser.add_argument('-i', dest='expected_interval_count', type=int, default=10, # 对 y 汇聚因数, 邻近多少个y计算一次R
-                        help='aggregation factor for y, how many neighboring y values to calculate R at a time.')
+                        help='[default: %(default)s | %(type)s] aggregation factor for y, how many neighboring y values to calculate R at a time.')
     parser.add_argument('-d', dest='downsampling_factor', type=int, default=5, # 下采样因数
-                        help='downsampling factor, determining a point for estimating the lines on both sides every few data points.')
+                        help='[default: %(default)s | %(type)s] downsampling factor, determining a point for estimating the lines on both sides every few data points.')
     parser.add_argument('-w', dest='line_fitting_window_size', type=int, default=5, # 滑动窗口点数
-                        help='number of points in the sliding window, consecutively fitting lines with multiple downsampling points to calculate the normal vector.')
+                        help='[default: %(default)s | %(type)s] number of points in the sliding window, consecutively fitting lines with multiple downsampling points to calculate the normal vector.')
     parser.add_argument('-s', dest='random_seed', type=int, default=42, # 随机种子
                         help='random seed')
     parser.add_argument('-dbcan_eps', dest='dbscan_eps', type=float, default=0.05, # dbscan 邻域的半径大小
-                        help='radius size of the neighborhood for DBSCAN.')
+                        help='[default: %(default)s | %(type)s] radius size of the neighborhood for DBSCAN.')
     parser.add_argument('-dbcan_min_sample', dest='dbscan_min_sample', type=int, default=5, # dbscan 簇最小成员数
-                        help='minimum number of members in a cluster for DBSCAN.')
+                        help='[default: %(default)s | %(type)s] minimum number of members in a cluster for DBSCAN.')
     parser.add_argument('-l', dest='learning_rate', type=float, default=0.01, # 梯度下降的学习率
-                        help='learning rate for gradient descent using Adam.')
+                        help='[default: %(default)s | %(type)s] learning rate for gradient descent using Adam.')
     parser.add_argument('-e', dest='epsilon', type=float, default=1e-8, # 梯度下降的终止条件
-                        help='Termination criterion for gradient descent, |loss\' - loss| < epsilon')
-    parser.add_argument('-r', dest='prior_circle_r', type=float, default=1, # 先验的圆半径
-                        help='Prior circle radius, which is used to set the initial value for gradient descent in estimating the original radius of the grinding wheel.')
+                        help='[default: %(default)s | %(type)s] Termination criterion for gradient descent, |loss\' - loss| < epsilon')
+    parser.add_argument('-r', dest='prior_circle_r', type=float, default=1.0, # 先验的圆半径
+                        help='[default: %(default)s | %(type)s] Prior circle radius, which is used to set the initial value for gradient descent in estimating the original radius of the grinding wheel.')
     args = parser.parse_args()
     
     assert (args.corner_example_name is not None), "Please utilize the command \'python main.py -n sample.csv\' to specify the source data CSV file." 
-    
+        
     return args
 
 args = parse_args()
@@ -65,21 +65,7 @@ if not os.path.exists(store_pic_folder_name):
 
 if not os.path.exists(store_result_folder_name):
     os.makedirs(store_result_folder_name)
-    
-with open(os.path.join(store_result_folder_name, "settings.txt"), 'w') as file:
-    file.write(f"corner_example_name = \"{corner_example_name}\"\n")
-    file.write(f"pic_store_name = \"{pic_store_name}\"\n")
-    file.write(f"result_store_name = \"{result_store_name}\"\n")
-    file.write(f"expected_interval_count = {expected_interval_count}\n")
-    file.write(f"downsampling_factor = {downsampling_factor}\n")
-    file.write(f"line_fitting_window_size = {line_fitting_window_size}\n")
-    file.write(f"random_seed = {random_seed}\n")
-    file.write(f"dbscan_eps = {dbscan_eps}\n")
-    file.write(f"dbscan_min_sample = {dbscan_min_sample}\n")
-    file.write(f"learning_rate = {learning_rate}\n")
-    file.write(f"epsilon = {epsilon}\n")
-    file.write(f"prior_circle_r = {prior_circle_r}\n")
-    
+        
 def intersection_point(m1, b1, m2, b2):
     coefficients_matrix = np.array([[m1, -1], [m2, -1]])
     constants_matrix = np.array([-b1, -b2])
@@ -348,3 +334,17 @@ plt.ylabel('Frequency')
 plt.savefig(os.path.join(store_result_folder_name, "results_pic.png"))
 plt.savefig(os.path.join(store_result_folder_name, "results_pic.svg"))
 plt.clf()
+
+with open(os.path.join(store_result_folder_name, "settings.txt"), 'w') as file:
+    file.write(f"corner_example_name = \"{corner_example_name}\"\n")
+    file.write(f"pic_store_name = \"{pic_store_name}\"\n")
+    file.write(f"result_store_name = \"{result_store_name}\"\n")
+    file.write(f"expected_interval_count = {expected_interval_count}\n")
+    file.write(f"downsampling_factor = {downsampling_factor}\n")
+    file.write(f"line_fitting_window_size = {line_fitting_window_size}\n")
+    file.write(f"random_seed = {random_seed}\n")
+    file.write(f"dbscan_eps = {dbscan_eps}\n")
+    file.write(f"dbscan_min_sample = {dbscan_min_sample}\n")
+    file.write(f"learning_rate = {learning_rate}\n")
+    file.write(f"epsilon = {epsilon}\n")
+    file.write(f"prior_circle_r = {prior_circle_r}\n")
