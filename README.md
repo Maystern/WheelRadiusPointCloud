@@ -36,7 +36,7 @@ Check if the project is configured in the following format:
 
 Place the raw data files in CSV format that need to be processed in the `./data` directory, such as `sample.csv`. 
 
-> *Note: You can directly download our ***test data sample*** (`sample.csv`) from ***Tencent Weiyun*** using the following link: ***https://share.weiyun.com/1Azqvb3Y***. Furthermore, to fortify the robustness of this project, additional test cases will be integrated in subsequent updates.*
+* *Note: You can directly download our ***test data sample*** (`sample.csv`) from ***Tencent Weiyun*** using the following link: ***https://share.weiyun.com/1Azqvb3Y***. Furthermore, to fortify the robustness of this project, additional test cases will be integrated in subsequent updates.*
 
 The format of the `sample.csv` file should be as follows, including headers, the number of points, and data separated by spaces:
 
