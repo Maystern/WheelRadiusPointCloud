@@ -63,7 +63,7 @@ You can use visualization tools like `CloudCompare` to load and inspect the proc
 To run the code, use the following command: `python main.py -n sample.csv` (where the `-n` parameter is mandatory, and other parameters have default values that can be modified). For detailed information on other parameters, you can refer to `python main.py --help`.
 
 ```
-(corfit) $ python main.py -help
+(corfit) $ python main.py -h
 usage: main.py [-h] [-n CORNER_EXAMPLE_NAME] [-pic PIC_STORE_NAME]
                [-result RESULT_STORE_NAME] [-i EXPECTED_INTERVAL_COUNT]
                [-d DOWNSAMPLING_FACTOR] [-w LINE_FITTING_WINDOW_SIZE]
@@ -95,7 +95,7 @@ optional arguments:
                         [default: 5 | int] number of points in the sliding
                         window, consecutively fitting lines with multiple
                         downsampling points to calculate the normal vector.
-  -s RANDOM_SEED        random seed
+  -s RANDOM_SEED        [default: 42 | int] random seed
   -dbcan_eps DBSCAN_EPS
                         [default: 0.05 | float] radius size of the
                         neighborhood for DBSCAN.

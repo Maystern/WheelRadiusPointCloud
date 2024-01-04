@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('-w', dest='line_fitting_window_size', type=int, default=5, # 滑动窗口点数
                         help='[default: %(default)s | %(type)s] number of points in the sliding window, consecutively fitting lines with multiple downsampling points to calculate the normal vector.')
     parser.add_argument('-s', dest='random_seed', type=int, default=42, # 随机种子
-                        help='random seed')
+                        help='[default: %(default)s | %(type)s] random seed')
     parser.add_argument('-dbcan_eps', dest='dbscan_eps', type=float, default=0.05, # dbscan 邻域的半径大小
                         help='[default: %(default)s | %(type)s] radius size of the neighborhood for DBSCAN.')
     parser.add_argument('-dbcan_min_sample', dest='dbscan_min_sample', type=int, default=5, # dbscan 簇最小成员数
