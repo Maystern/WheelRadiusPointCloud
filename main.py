@@ -104,7 +104,7 @@ def calculate_distance(x1, y1, x2, y2, device = "numpy"):
     
 def calculate_cross_angle(x1, y1, x2, y2):
     vector_a = np.array([x1, y1])
-    vector_b = np.array([x2, y2])
+    vector_b = np.array([x2, y2])    
     cos_theta = np.dot(vector_a, vector_b) / (np.linalg.norm(vector_a) * np.linalg.norm(vector_b))
     theta_radians = np.arccos(cos_theta)
     theta_degrees = np.degrees(theta_radians)
@@ -164,7 +164,13 @@ def solve(interval_id, solve_data):
     filtered_labels = [label for label in labels if label != -1]
     label_counts = Counter(filtered_labels)
     most_common_labels = label_counts.most_common(2)
-    assert len(most_common_labels) == 2, "Please adjust hyperparameters to prevent the clustering result from being too bad."
+    
+    if (len(most_common_labels) != 2):
+        print("[warning] Please adjust hyperparameters to prevent the clustering result from being too bad.")
+        plt.clf()
+        return -1, -1
+    
+    # assert len(most_common_labels) == 2, "Please adjust hyperparameters to prevent the clustering result from being too bad."
     
     plt.scatter(result[:, 0], result[:, 1], color='blue', marker='o', label='Noise', s=20, zorder=0)
 
@@ -188,7 +194,8 @@ def solve(interval_id, solve_data):
         ms.append(slope)
         bs.append(intercept)
     
-    cross_point = intersection_point(ms[0], bs[0], ms[1], bs[1])    
+    cross_point = intersection_point(ms[0], bs[0], ms[1], bs[1])
+    # print(f"cross_point = ({cross_point[0], cross_point[1]})")
     formatted_point = f'({cross_point[0]:.2f}, {cross_point[1]:.2f})'
     plt.scatter(cross_point[0], cross_point[1], color='black', marker='x', label='CrossPoint', s=20,  zorder=6)
     plt.text(cross_point[0], cross_point[1], formatted_point, ha='right', va='bottom')
@@ -211,9 +218,13 @@ def solve(interval_id, solve_data):
     y2 = min(result[:, 1])
     x2 = (y2 - angle_bisector_intercept) / angle_bisector_slope
     plt.plot([x1, x2], [y1, y2], label="AngleBisector", linestyle = '--', color='black', zorder=5)
-    
+    # print(f"test, {(y2 - y1) / (x2 - x1)}")
+    # print(f"line: k = {angle_bisector_slope}, b = {angle_bisector_intercept}")
     dv_x, dv_y = calculate_direction_vector_from_slope(angle_bisector_slope)
-
+    
+    if dv_y > 0:
+        dv_x = -dv_x
+        dv_y = -dv_y
 
     vec1 = np.array([1, ms[0]])
     vec2 = np.array([1, ms[1]])
@@ -225,7 +236,12 @@ def solve(interval_id, solve_data):
     losses = []
     best_sed_dis = None
     best_loss = None
+    test_cnt = 0
     while True:
+        test_cnt = test_cnt + 1
+        if test_cnt >= 1000:
+            plt.clf()
+            return -1, -1
         optimizer.zero_grad()
         circle_center_x = cross_point[0] + sgd_dis * dv_x
         circle_center_y = cross_point[1] + sgd_dis * dv_y
@@ -245,6 +261,8 @@ def solve(interval_id, solve_data):
         if best_loss is None or detached_loss < best_loss:
             best_loss = detached_loss
             best_sed_dis = float(sgd_dis.detach())
+        # print(f"cirle point = ({float(circle_center_x.detach()), float(circle_center_y.detach())})")
+        # print(f"loss = {detached_loss}, dis = {float(sgd_dis.detach())}, cnt = {cnt}")
         loss.backward()
         optimizer.step()
         if last_loss is not None and abs(last_loss - detached_loss) < epsilon:
@@ -253,6 +271,7 @@ def solve(interval_id, solve_data):
         
     circle_center_x = cross_point[0] + best_sed_dis * dv_x
     circle_center_y = cross_point[1] + best_sed_dis * dv_y
+    # print(f"best_sed_dis = {best_sed_dis}")
     xp1, yp1 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[0], bs[0])
     xp2, yp2 = calculate_point_to_line_perpendicular(circle_center_x, circle_center_y, ms[1], bs[1])
     distance = calculate_distance(circle_center_x, circle_center_y, xp1, yp1, "numpy")
@@ -266,7 +285,7 @@ def solve(interval_id, solve_data):
             plt_lightgreen_y.append(data[1])
     plt.scatter(plt_lightgreen_x, plt_lightgreen_y,  color='lightgreen', marker='o', s=20, label = "TrainPoints", zorder=4)
     
-    angle = calculate_cross_angle(xp1 - circle_center_x, yp1 - circle_center_y, xp2 - circle_center_x, yp2 - circle_center_y)
+    angle = calculate_cross_angle(xp1 - cross_point[0], yp1 - cross_point[1], xp2 - cross_point[0], yp2 - cross_point[1])
     
     plt.title(f"r = {float(distance):5e} loss = {float(best_loss):5e} angle = {float(angle):.2f}°")
     plt.scatter(circle_center_x, circle_center_y, color='black', marker='o', label='CircleCenter', s=20)
@@ -276,7 +295,7 @@ def solve(interval_id, solve_data):
     plt.savefig(os.path.join(store_this_interval_path, 'new_scatter_plot.png'))
     plt.savefig(os.path.join(store_this_interval_path, 'new_scatter_plot.svg'))
     plt.clf()
-    
+    # print(f"[result] dis = {distance}, angle = {angle} .")
     return distance, angle
 
 example_csv_path = os.path.join("./data", corner_example_name + ".csv")
@@ -292,9 +311,13 @@ except:
         next(reader)
         total_rows = int(next(reader)[0])
         data_array = np.array(list(tqdm(reader, total=total_rows, desc="Converting to NumPy array")), dtype=float)
+        print("Sorting...")
+        sorted_indices = np.lexsort((data_array[:, 0], data_array[:, 1]))
+        data_array = data_array[sorted_indices]
         np.save(example_npy_path, data_array)
         print("the " + corner_example_name + ".npy file has been created successfully!")
 
+# assert False, "eh!"
 unique_values, counts = np.unique(data_array[:, 1], return_counts=True)
 interval_id = 0
 estimated_Rs = []
@@ -305,8 +328,9 @@ for i in tqdm(range(0, len(unique_values), expected_interval_count), desc="Proce
     idx = np.where(np.isin(data_array[:, 1], unique_values[i:i + expected_interval_count]))
     solve_data = data_array[idx][:, [0, 1, 2]]
     R, angle = solve(interval_id, solve_data)
-    estimated_Rs.append(R)
-    estimated_angles.append(angle)
+    if (R != -1):
+        estimated_Rs.append(R)
+        estimated_angles.append(angle)
 
 csv_file_path = os.path.join(store_result_folder_name, "results.csv")
 with open(csv_file_path, 'w', newline='') as csvfile:
