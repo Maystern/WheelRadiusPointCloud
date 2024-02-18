@@ -1,6 +1,8 @@
 # WheelRadiusPointCloud
 
-Li Yang, Cong Zhou, Jiacheng Luo, Yufan Xiao, Chengyu Zeng
+Li Yang$^1$, Cong Zhou$^1$, **Jiacheng Luo$^2$**, Yufan Xiao$^1$, Chengyu Zeng$^1$
+- $^1$ Department of Mechanical and Energy Engineering, Southern University of Science and Technology.
+- $^2$ Department of Computer Science and Engineering, Southern University of Science and Technology.
 
 ## Project Introduction
 
