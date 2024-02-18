@@ -1,6 +1,6 @@
 # WheelRadiusPointCloud
 
-Yufan Xiao, Jiacheng Luo
+Jiacheng Luo, Yufan Xiao
 
 ## Project Introduction
 
